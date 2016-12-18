@@ -1,7 +1,7 @@
 <style>
   .pagination {
     float:right;
-    padding-right:10px;  
+    padding-right:10px;
   }
   .pagination ul {
     list-style-type:none;
@@ -32,7 +32,7 @@
     color:#fff;
   }
   .pagination .active {
-    background:#2bbb9c;  
+    background:#2bbb9c;
   }
   .pagination .active  a{
     color:#fff;
@@ -62,9 +62,23 @@
     <template v-if="rowsTotal > 0">
       <div class="pagination">
         <ul>
-          <li><a href="javascript:void(0)" @click="prev"  v-bind:class="{'disabled':isFirst}">&lt</a></li>
-          <li v-for="n in pageChunkCurrent" v-bind:class="{'active':isActive[n+1]}" @click="nav( n+1 )"><a  href="javascript:void(0)">{{n + 1}}</a></li>
-          <li><a href="javascript:void(0)" @click="next" v-bind:class="{'disabled':isLast}">&gt</a></li>
+          <li>
+            <a @click="pprev" :class="{'disabled':isFFirst}">&lt&lt</a>
+          </li>
+          <li>
+            <a @click="prev" :class="{'disabled':isFirst}">&lt</a>
+          </li>
+          <template v-for="num in pageChunk[activeChunck]" >
+            <li :class="{'active': num=== page}" @click="nav(num)">
+              <a>{{num}}</a>
+            </li>
+          </template>
+          <li>
+            <a @click="next" :class="{'disabled':isLast}">&gt</a>
+          </li>
+          <li>
+            <a @click="nnext" :class="{'disabled':isLLast}">&gt&gt</a>
+          </li>
         </ul>
         <div class="stastics">共<span>{{rowsTotal}}</span>条，<span>{{pageTotal}}</span>页</div>
       </div>
@@ -88,103 +102,74 @@
         required: true
       }
     },
+    data() {
+      return {
+        pageChunk: [],
+        activeChunck: 0,
+        pageTotal: 1,
+        isLast: false,
+        isFirst: true,
+        isFFirst: false,
+        isLLast: false,
+      }
+    },
     watch: {
-      rowsTotal: function (newVal, oldVal) {
-        if (newVal !== oldVal) {
-          // init option when rows changes
-          this.page = 1
-          this.isFirst = true
-          this.isLast = false
+      rowsTotal: {
+        immediate: true,
+        handler: function(newVal, oldVal) {
+          if (newVal !== oldVal) {
+            // init option when rows changes
+            this.page = 1
+            this.isFirst = true
+            this.isLast = false
+            this.isFFirst = true
+            this.isLLast = false
+            this.activeChunck = 0
+            this.pageTotal = Math.ceil(this.rowsTotal / this.pageSize)
+            let chunck = []
+            const length = this.pageTotal + 1
+            for (let i = 1; i < length; i++) {
+              chunck.push(i)
+              if (i % this.pageSize === 0) {
+                this.pageChunk.push(chunck)
+                chunck = []
+              }
+            }
+            if (chunck.length !== 0) {
+              this.pageChunk.push(chunck)
+            }
+          }
         }
       },
-      pageTotal: function (newVal, oldVal) {
-        if (newVal === 1) {
-          // only one page
-          this.isFirst = true
-          this.isLast = true
-        }
-      }
     },
     computed: {
-      pageChunkCurrent: function () {
-        let pageTotal = Math.ceil(this.rowsTotal / this.pageSize)
-        let pageArr = []
-        for (let i = 0; i < pageTotal; i++) {
-          pageArr[i] = i
-        }
-        let pageChunk = []
-        let j = pageArr.length
-        for (let i = 0; i < j; i += this.pageSize) {
-          pageChunk.push(pageArr.slice(i, i + this.pageSize))
-        }
-        return pageChunk[this.pageChunkIndex]
-      },
-      pageTotal: function () {
-        let total = Math.ceil(this.rowsTotal / this.pageSize)
-        if (total === 1) {
-          this.isLast = true
-          this.isFirst = true
-        }
-        return Math.ceil(this.rowsTotal / this.pageSize)
-      },
-      isActive: function () {
-        let pageTotal = this.pageTotal
-        let o = {}
-        for (let i = 0; i < pageTotal; i++) {
-          o[i + 1] = 0
-        }
-        o['actived'] = this.page
-        o[this.page] = 1
-        return o
-      }
-    },
-    data: function () {
-      let pageTotal = this.pageTotal
-      let pageArr = []
-      for (let i = 0; i < pageTotal; i++) {
-        pageArr[i] = i
-      }
-      let pageChunk = []
-      let j = pageArr.length
-      for (let i = 0; i < j; i += this.pageSize) {
-        pageChunk.push(pageArr.slice(i, i + this.pageSize))
-      }
-      return {
-        pageChunk: pageChunk,
-        pageChunkIndex: 0,
-        isLast: false,
-        isFirst: true
-      }
     },
     methods: {
-      nav: function (n) {
-        let activeObj = this.isActive
-        activeObj[activeObj['actived']] = 0
-        activeObj[n] = 1
-        activeObj['actived'] = n
-        n === 1 ? this.isFirst = true : this.isFirst = false
-        this.pageTotal === n ? this.isLast = true : this.isLast = false
-        this.page = n
+      nav(index) {
+        if (index < 1) {
+          this.page = 1
+        } else if (index > this.pageTotal) {
+          this.page = this.pageTotal
+        } else {
+          this.page = index
+        }
+        this.activeChunck = Math.floor((this.page - 1) / this.pageSize)
+        this.isFirst = this.page === 1
+        this.isLast = this.page === this.pageTotal
+        this.isFFirst = this.page < this.pageSize
+        this.isLLast = this.page > this.pageSize * (this.pageChunk.length - 1)
       },
-      next: function () {
-        let activeObj = this.isActive
-        if (activeObj.actived % this.pageSize === 0) {
-          this.pageChunkIndex += 1
-          this.pageChunkCurrent = this.pageChunk[this.pageChunkIndex]
-        }
-        if (activeObj.actived + 1 <= this.pageTotal) {
-          this.nav(activeObj.actived + 1)
-        }
+      next() {
+        this.nav(this.page + 1)
       },
-      prev: function () {
-        let activeObj = this.isActive
-        if (activeObj.actived - 1 >= 1) {
-          this.nav(activeObj.actived - 1)
-        }
-        if (activeObj.actived % this.pageSize === 0) {
-          this.pageChunkIndex -= 1
-          this.pageChunkCurrent = this.pageChunk[this.pageChunkIndex]
-        }
+      prev() {
+        this.nav(this.page - 1)
+      },
+      pprev() {
+        this.nav(this.page - this.pageSize)
+      },
+      nnext() {
+        this.nav(this.page + this.pageSize)
       }
     }
   }

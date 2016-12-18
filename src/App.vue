@@ -9,9 +9,9 @@ export default {
   components: {
     vueGrid: VueGrid
   },
-  data: function () {
+  data: function() {
     var data = []
-    for (var i = 0; i < 30000; i++) {
+    for (var i = 0; i < 312; i++) {
       data.push({id: i, domain: i, user: Math.random() * 1000000})
     }
     return {
